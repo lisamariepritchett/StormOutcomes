@@ -337,6 +337,8 @@ typeorder = c('Tornado','Flash Flood','Flood','Storm Surge','Rip Current','Tide'
 MySummary$Type <- factor(MySummary$Type, typeorder)
 
 
+
+
 # Choose Colors
 set3pal <- brewer.pal(12,'Set3')
 set1pal <- brewer.pal(9, 'Set1')
@@ -375,7 +377,7 @@ MySummary %>%  ggplot(aes(
     fill = Type)) + 
     geom_bar(stat='identity',color='darkgray',alpha=.9)  +
     theme(axis.text = element_text(size = 11),
-          axis.text.x = element_text(angle = 30, hjust = 1),
+          axis.text.x = element_text(angle = 90, hjust = 1),
           legend.title=element_blank(),
           legend.key.width = unit(0.6, 'cm'),
           legend.key.height= unit(0.6, 'cm'),
@@ -386,38 +388,30 @@ MySummary %>%  ggplot(aes(
     scale_fill_manual(values=mypal) +
     labs(x='',y='Total Injuries in Thousands')
 
+ggsave('injuries.png')
+
 MySummary %>%  ggplot(aes(
     x = Category,
     y = Total.Fatalities.Thousands,
     fill = Type)) + 
     geom_bar(stat='identity',color='darkgray',alpha=.9)  +
-    theme(axis.text = element_text(size = 11),
-          axis.text.x = element_text(angle = 30, hjust = 1),
-          legend.title=element_blank(),
-          legend.key.width = unit(0.6, 'cm'),
-          legend.key.height= unit(0.6, 'cm'),
-          legend.justification=c(1,1), 
-          legend.position=c(1,1),
-          legend.direction="horizontal",
-          legend.background = element_rect(fill=alpha('#ebebeb',0.7))) +
+    theme(legend.position="none",
+          axis.text = element_text(size = 11),
+          axis.text.x = element_text(angle = 90, hjust = 1)) +
     scale_fill_manual(values=mypal) +
     labs(x='',y='Total Fatalities in Thousands')
 
-
+ggsave('fatalities.png')
 
 MySummary %>%  ggplot(aes(
     x = Category,
     y = Total.Cost.Billions,
     fill = Type)) + 
     geom_bar(stat='identity',color='darkgray',alpha=.9)  +
-    theme(axis.text = element_text(size = 11),
-          axis.text.x = element_text(angle = 30, hjust = 1),
-          legend.title=element_blank(),
-          legend.key.width = unit(0.6, 'cm'),
-          legend.key.height= unit(0.6, 'cm'),
-          legend.justification=c(1,1), 
-          legend.position=c(1,1),
-          legend.direction="horizontal",
-          legend.background = element_rect(fill=alpha('#ebebeb',0.7))) +
+    theme(legend.position="none",
+          axis.text = element_text(size = 11),
+          axis.text.x = element_text(angle = 90, hjust = 1)) +
     scale_fill_manual(values=mypal) +
     labs(x='',y='Total Cost in Billions')
+
+ggsave('cost.png')
