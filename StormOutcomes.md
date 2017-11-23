@@ -1,15 +1,8 @@
----
-title: "The Human and Financial Costs of Severe Weather in the USA"
-author: "Lisa Marie Pritchett"
-date: "November 23, 2017"
-output:
-  html_document:
-    keep_md: true
----
+# The Human and Financial Costs of Severe Weather in the USA
+Lisa Marie Pritchett  
+November 23, 2017  
 
-```{r setup, include=FALSE}
-knitr::opts_chunk$set(eval = TRUE, echo=TRUE)
-```
+
 
 ## The Human and Financial Costs of Severe Weather in the USA
 
@@ -28,7 +21,8 @@ This document contains all code needed to download the data, clean it, process i
 
 The code below checks to see if the file already exists in the working directory before downloading it and reading it into memory.
 
-```{r getdata, warning=FALSE,message=FALSE}
+
+```r
 # import libraries
 library(reshape2)
 library(RColorBrewer)
@@ -53,7 +47,8 @@ StormData <- read.csv(destfile, stringsAsFactors = F)
 First, I take a quick look at the kinds of values in the dataset. Each row describes a storm event somewhere in the United States. For this analysis, I keep only rows that are associated with some damage, injury, or death. In addition, I only need the columns regarding Event Type (EVTYPE), Fatalities, Injuries, and Costs. In addition I keep the REFNUM and the REMARKS columns. I discard all other information including the date, time, location, size and magnitude of the storm.
 
 
-```{r subsetdata, warning=F}
+
+```r
 # subset data
 My_StormData <- StormData %>%
     filter(PROPDMG != 0 |CROPDMG != 0 | INJURIES != 0 | FATALITIES != 0) %>%
@@ -64,10 +59,10 @@ My_StormData <- StormData %>%
 ```
 
 Subsetting the data reduced it from about 
-`r round(nrow(StormData)/1000)` thousand  to about 
-`r round(nrow(My_StormData)/1000)` thousand rows, and from
-`r ncol(StormData)` to
-`r ncol(My_StormData)` columns
+902 thousand  to about 
+255 thousand rows, and from
+37 to
+9 columns
 without discarding any information needed.
 
 
@@ -77,11 +72,12 @@ The NOAA defines 48 unique storm event types and describes them in their publica
 
 Many of the Types seem to be closely related to others. For example we see both "Heat" and "Excessive Heat" so it may be useful to combine them into a larger group. 
 
-Next I examined the values in the column for event type (EVTYPE). Far from the 48 event types, there are `r My_StormData$EVTYPE %>% unique() %>% length()` unique values in the data. This data needs to be cleaned.
+Next I examined the values in the column for event type (EVTYPE). Far from the 48 event types, there are 447 unique values in the data. This data needs to be cleaned.
 
 How many of the events in the data set are not labeled with one of the exact Event Types? To help answer this question, I typed the  list of event types from the pdf into EventTypes.txt and read it into R in the code below.
 
-```{r exam_EventTyptes}
+
+```r
 typesfile <- 'NOAAWeatherTypes.txt'
 if(!file.exists(typesfile)){
     typesurl = 'https://github.com/lisamariepritchett/StormOutcomes/blob/master/NOAAWeatherTypes.txt'
@@ -92,9 +88,37 @@ EventTypes <- readLines(typesfile)
 print(EventTypes)
 ```
 
+```
+##  [1] "ASTRONOMICAL LOW TIDE "   "AVALANCHE "              
+##  [3] "BLIZZARD "                "COASTAL FLOOD "          
+##  [5] "COLD/WIND CHILL "         "DEBRIS FLOW "            
+##  [7] "DENSE FOG "               "DENSE SMOKE "            
+##  [9] "DROUGHT "                 "DUST DEVIL "             
+## [11] "DUST STORM "              "EXCESSIVE HEAT "         
+## [13] "EXTREME COLD/WIND CHILL"  "FLASH FLOOD"             
+## [15] "FLOOD"                    "FREEZING FOG"            
+## [17] "FROST/FREEZE"             "FUNNEL CLOUD"            
+## [19] "HAIL"                     "HEAT"                    
+## [21] "HEAVY RAIN"               "HEAVY SNOW"              
+## [23] "HIGH SURF"                "HIGH WIND"               
+## [25] "HURRICANE/TYPHOON"        "ICE STORM"               
+## [27] "LAKESHORE FLOOD"          "LAKE-EFFECT SNOW"        
+## [29] "LIGHTNING"                "MARINE HAIL"             
+## [31] "MARINE HIGH WIND"         "MARINE STRONG WIND"      
+## [33] "MARINE THUNDERSTORM WIND" "RIP CURRENT"             
+## [35] "SEICHE"                   "SLEET"                   
+## [37] "STORM TIDE"               "STRONG WIND"             
+## [39] "THUNDERSTORM WIND"        "TORNADO"                 
+## [41] "TROPICAL DEPRESSION"      "TROPICAL STORM"          
+## [43] "TSUNAMI"                  "VOLCANIC ASH"            
+## [45] "WATERSPOUT"               "WILDFIRE"                
+## [47] "WINTER STORM"             "WINTER WEATHER"
+```
+
 Now I can search through the EVTYPE column for cases matching each of the event types. I define a function below that creates a factor variable "Category" with the 48 levels above plus "Not Categorized" for events labeled with any other values. I created a function with the idea that I could try it with many different sets of search strings to best match all the weather events in the database.
 
-```{r CreateSearchEventsF}
+
+```r
 # mylabels and myRegEx have an element for every type/category. Searches through
 # EVTYPE for regular expressions and creates dummy coded columns and a factor 
 # variable and with levels given by myLabels. Note can result in more than 1 
@@ -134,7 +158,8 @@ SearchEvents <- function(myLabels,myRegEx) {
 
 Now I can use this function with a list of Regular expressions to  match only the exact Event Type strings. All of the events without a label exactly matching one of the Event Types will be placed into a 'Not Categorized' group.
 
-```{r SearchExactLabels}
+
+```r
 # Create Lables and Regular Expressions from  EventTypes
 EventLabels <- EventTypes %>% str_trim() %>% str_replace_all('[\\W+]','')
 ExactRegEx <- paste('^',str_trim(EventTypes),'$',sep='')
@@ -146,7 +171,7 @@ My_StormData <- SearchEvents(EventLabels,ExactRegEx)
 #### How messy is the Event Type data?
 
 I found that 
-`r round(nrow(filter(My_StormData,Category=='Not Categorized')) / nrow(My_StormData) %>% round() * 100)`%
+32%
 of the entries do not have event labels that match the storm events exactly. In addition, the data are collected from many different sources so there is no reason to expect that the messiness is evenly distributed across Event Types. This means that if we just ignore all the entries without exact labels we may be greatly underestimating the impact of some of the weather events.
 
 
@@ -190,7 +215,8 @@ There are many different ways the 48 events could be grouped (by season, locatio
 Next I experimented with different sets of regular expressions to efficiently  search the database for these groups. Essentially, I came up with a list of keywords for each of the groups that seem to do a good job of classifying the data. I started with keywords from the list of event types and then added other keywords that showed up most frequently, for example, I added "LANDSLIDE" and "MUDSLIDE" (which are not keywords in the published list, but do show up in the data) to the Debris Flow category.
 
 The keywords for each category are available online at my github (https://github.com/lisamariepritchett/StormOutcomes/blob/master/StormEventKeywords.csv) and are printed below:
-```{r getGroups}
+
+```r
 # First get the groups and keywords from the csv file
 keywordsfile = 'StormEventKeywords.csv'
 if(!file.exists(keywordsfile)){
@@ -202,10 +228,53 @@ GroupKeywords <- read.csv(keywordsfile, stringsAsFactors = F)
 print(GroupKeywords)
 ```
 
+```
+##               Cold  Debris.Flow Drought  Fire        Flood Heat
+## 1             COLD  DEBRIS FLOW DROUGHT  FIRE        FLOOD HEAT
+## 2       WIND CHILL VOLCANIC ASH         SMOKE       SEICHE     
+## 3            FROST    AVALANCHE                        FLD     
+## 4            FREEZ        SLIDE                 HIGH WATER     
+## 5  LOW TEMPERATURE        SLUMP                  DAM BREAK     
+## 6      HYPOTHERMIA     AVALANCE               RISING WATER     
+## 7              ICE                                             
+## 8              ICY                                             
+## 9            GLAZE                                             
+## 10                                                             
+## 11                                                             
+## 12                                                             
+##     Thunderstorm     Ocean_Tidal    Tornado  Tropical       Wind
+## 1           HAIL            TIDE       DUST  TROPICAL       WIND
+## 2   THUNDERSTORM            SURF     FUNNEL   TSUNAMI DUST STORM
+## 3           RAIN          MARINE WATERSPOUT HURRICANE MICROBURST
+## 4      LIGHTNING         CURRENT    TORNADO   TYPHOON  DOWNBURST
+## 5            FOG     STORM SURGE   GUSTNADO                     
+## 6       LIGHTING         SEAS\\b    TORNDAO                     
+## 7      LIGNTNING      ROGUE WAVE    TORNADO                     
+## 8  PRECIPITATION           TIDAL  LANDSPOUT                     
+## 9         PRECIP          SWELLS                                
+## 10  HEAVY SHOWER COASTAL EROSION                                
+## 11          TSTM           WAVES                                
+## 12                 COASTAL STORM                                
+##     Winter.Storm
+## 1       BLIZZARD
+## 2           SNOW
+## 3  FREEZING RAIN
+## 4   FREEZING FOG
+## 5          SLEET
+## 6         WINTER
+## 7      ICE STORM
+## 8     WINTRY MIX
+## 9      HEAVY MIX
+## 10              
+## 11              
+## 12
+```
+
 
 The code below reads the keywords, processes them into regular expressions, and searches for them using my SearchEvents function.
 
-```{r SearchGroups}
+
+```r
 # Combine Keywords into Regular Expressions
 GroupedRegEx <- apply( GroupKeywords[1:nrow(GroupKeywords),], 2, 
                        paste, collapse= "|" )
@@ -220,37 +289,75 @@ My_StormData <- SearchEvents(GroupedLabels,GroupedRegEx)
 
 
 This code results in a classification for all but
-`r My_StormData %>% filter(Category=='Not Categorized') %>% nrow()`
+57
 cases,
-`r filter(My_StormData, EVTYPE=='OTHER') %>% nrow()` of which are labeled "other". 
+34 of which are labeled "other". 
 
 #### Apply conditional logic to make categories mutually exclusive
 
 One problem remains: 
-`r round(nrow(filter(My_StormData,Counted>1)) / nrow(My_StormData)*100)`% 
+48% 
 of the cases are placed into more than one category. In correcting for this, I used the following query to see what EVTYPE values were being classified under multiple categories:
 
-```{r query1}
+
+```r
 filter(My_StormData,Counted>1) %>% group_by(Category,EVTYPE) %>% summarise(n=n()) %>% arrange(desc(n))
+```
+
+```
+## # A tibble: 147 x 3
+## # Groups:   Category [28]
+##                         Category                  EVTYPE     n
+##                            <chr>                   <chr> <int>
+##  1             Thunderstorm,Wind               TSTM WIND 63235
+##  2             Thunderstorm,Wind       THUNDERSTORM WIND 43655
+##  3             Thunderstorm,Wind      THUNDERSTORM WINDS 12086
+##  4             Cold,Winter.Storm               ICE STORM   708
+##  5             Thunderstorm,Wind          TSTM WIND/HAIL   441
+##  6                     Cold,Wind EXTREME COLD/WIND CHILL   111
+##  7 Thunderstorm,Ocean_Tidal,Wind        MARINE TSTM WIND   109
+##  8                  Tornado,Wind              DUST STORM   103
+##  9                     Cold,Wind         COLD/WIND CHILL    90
+## 10              Ocean_Tidal,Wind      MARINE STRONG WIND    46
+## # ... with 137 more rows
 ```
 We see that Thunderstorm Wind events account for many of the cases which have been placed into more than one category. I can very quickly correct these mistakes using conditional logic. This works so easily because I have boolean ("dummy coded") columns for each group.
 
-```{r conditionTSTMWIND}
-My_StormData <- My_StormData %>% mutate(Wind = Wind & !Thunderstorm)
 
+```r
+My_StormData <- My_StormData %>% mutate(Wind = Wind & !Thunderstorm)
 ```
 
 The above statement makes the Wind and Thunderstorm categories mutually exclusive. Any events that were categorized as both Wind and Thunderstorm before will now be only called Thunderstorm. Changes like this were made carefully by hand by considering what events should be placed in what group.
 
 I can check the list of EVTYPE labels assigned to a given category using the following:
 
-```{r querey2}
+
+```r
 My_StormData %>% filter(Wind) %>% group_by(EVTYPE) %>% summarise(n=n()) %>% arrange(desc(n))
+```
+
+```
+## # A tibble: 59 x 2
+##                     EVTYPE     n
+##                      <chr> <int>
+##  1               HIGH WIND  5522
+##  2             STRONG WIND  3372
+##  3              HIGH WINDS   657
+##  4 EXTREME COLD/WIND CHILL   111
+##  5              DUST STORM   103
+##  6         COLD/WIND CHILL    90
+##  7                    WIND    84
+##  8          DRY MICROBURST    78
+##  9            STRONG WINDS    52
+## 10      MARINE STRONG WIND    46
+## # ... with 49 more rows
 ```
 
 This helps to confirm that each group is composed of the intended set of EVTYPE labels. Below I run a batch of conditional statements to account for most of the events categorized more than once.
 
-```{r conditionalstatements}
+
+```r
 My_StormData <- My_StormData %>% mutate(
     Wind = Wind & !Cold, # Cold/Wind Chill is Cold not Wind
     Cold = Cold & !Winter.Storm, #  ICE STORM, SNOW/ICE are WinterStorm 
@@ -282,15 +389,15 @@ My_StormData$Category <- gsub('^$','Not Categorized',  My_StormData$Category)
 
 
 This results in 
-`r round(nrow(filter(My_StormData,Counted==1)) / nrow(My_StormData)*100,2)`% 
+99.97% 
 of the data being classified with exactly 1 label. The last 
-`r nrow(filter(My_StormData,Counted>1))` 
+24 
 cases that have more than one type listed can be treated as whichever type was listed first:
 
-```{r assignfirst}
+
+```r
 My_StormData[My_StormData$Counted>1,"Category"] <- 
     My_StormData[My_StormData$Counted>1,"whichfirst"]
-
 ```
 
 
@@ -298,7 +405,8 @@ My_StormData[My_StormData$Counted>1,"Category"] <-
 
 For my plot I want to choose a few specific event types to include within the larger groups. For example, I want to show Flash Floods within the Flood group and Hurricanes within the Tropical Storm group. Here I make a function to add Types by searching within Categories for keywords. I then call it for each subtype I wish to add. 
 
-```{r addsubtypes}
+
+```r
 addsubcat <- function(InCategory,subcat_string,subcat_label) {
     My_StormData$strmatch <-  grepl(subcat_string,My_StormData$EVTYPE)
     My_StormData$Type <- ifelse(My_StormData$strmatch & 
@@ -319,12 +427,12 @@ My_StormData <- addsubcat('Ocean_Tidal','RIP CURRENT','Rip Current')
 My_StormData <- addsubcat('Ocean_Tidal','STORM SURGE','Storm Surge')
 My_StormData <- addsubcat('Tropical','HURRICANE|TYPHOON','Hurricane')
 My_StormData <- addsubcat('Flood','FLASH','Flash Flood')
-
 ```
 
 Now I can make Type and Category Factor variables and set the order they will appear in the figure
 
-```{r make factors}
+
+```r
 # Make Type a factor and set order
 typeorder <- c('Tornado', 'Flash Flood', 'Flood', 'Storm Surge', 'Rip Current', 
     'Ocean_Tidal', 'Hail', 'Lightning', 'TSTM Wind', 'Thunderstorm', 
@@ -377,7 +485,8 @@ The following code replaces the exponent values with the proper number to be use
 
 Finally, in the code below Property and Crop damage are calculated and combined to represent the total cost of each storm event.
 
-```{r cleanexponents}
+
+```r
 # Convert strings into exponents. Values determined by careful inspection of REMARKS
 My_StormData$PROPDMGEXP <- str_replace_all(My_StormData$PROPDMGEXP,'[Kk]','3')
 My_StormData$PROPDMGEXP <- str_replace_all(My_StormData$PROPDMGEXP,'[Hh]','2')
@@ -408,9 +517,6 @@ My_StormData$CropDamage <- apply(My_StormData[,5:8],1,
                                  function(p) p[2]*10^p[4])
 # Combine into Financial Cost
 My_StormData$Cost <- My_StormData$PropertyDamage + My_StormData$CropDamage
-
- 
-
 ```
 
 
@@ -420,8 +526,8 @@ My_StormData$Cost <- My_StormData$PropertyDamage + My_StormData$CropDamage
 
 With all of the data cleaned I am ready to make a summary data table. The code below calculates the total fatalities, injuries, and costs for each level of my factors for Category and Type.
 
-```{r summarize}
 
+```r
 My_StormData <- select(My_StormData, REFNUM,EVTYPE,Category,Type,Fatalities=FATALITIES,
                        Injuries=INJURIES,PropertyDamage,CropDamage,Cost,REMARKS) 
 
@@ -438,9 +544,10 @@ MySummary <- My_StormData %>% group_by(Category, Type) %>%
 
 ### Choose Colors for Plot
 
-I want to use colors to code Event Type, it has `r nlevels(MySummary$Type)` levels. The Rcolorbrewer package makes quick attractive color palettes but for only up to 12 levels. Here I combined two palettes and add colors by hand to make the needed number number of colors. Then, I make a swap colors function to quickly fine tune the color scheme (such as making Fire red instead of blue).
+I want to use colors to code Event Type, it has 22 levels. The Rcolorbrewer package makes quick attractive color palettes but for only up to 12 levels. Here I combined two palettes and add colors by hand to make the needed number number of colors. Then, I make a swap colors function to quickly fine tune the color scheme (such as making Fire red instead of blue).
 
-```{r chooseColors}
+
+```r
 # Choose Colors
 set3pal <- brewer.pal(12,'Set3')
 set1pal <- brewer.pal(9, 'Set1')
@@ -473,7 +580,8 @@ mypal <- as.vector(t(colorcodes))
 
 Finally, I make and save the plots
 
-```{r makePlots, fig.show='hold', fig.asp=0.5}
+
+```r
 MySummary %>%  ggplot(aes(
     x = Category,
     y = Total.Injuries.Thousands,
@@ -501,15 +609,16 @@ MySummary %>%  ggplot(aes(
     scale_fill_manual(values=mypal) +
     labs(x='',y='Total Fatalities in Thousands',
          subtitle = 'Total Fatalities related to each type of severe weather in the NOAA database')
-
-
 ```
+
+![](StormOutcomes_files/figure-html/makePlots-1.png)![](StormOutcomes_files/figure-html/makePlots-2.png)
 
 
 
 We can see that Tornados cause by far the most injuries and deaths in the USA. Heat causes the second most deaths, and Thunderstorms cause the second most injuries. Every kind of severe weather category examined here is associated with some injuries or fatalities. 
 
-```{r LastPlot, fig.asp=0.5}
+
+```r
 MySummary %>%  ggplot(aes(
     x = Category,
     y = Total.Cost.Billions,
@@ -520,8 +629,9 @@ MySummary %>%  ggplot(aes(
     scale_fill_manual(values=mypal) +
     labs(x='',y='Total Cost in Billions',
          subtitle = 'Total Cost in Billions of Dollars related to each type of severe weather in the NOAA database')
-
 ```
+
+![](StormOutcomes_files/figure-html/LastPlot-1.png)<!-- -->
 
 
 Floods cause the most Financial damage, followed by Tropical Storms (especially Hurricanes), Tornados, other Ocean/Tidal events, Thunderstorms, and Winter Storms. The weather types causing almost nothing financially are Cold, Heat, and Debris Flow.
@@ -531,5 +641,5 @@ Thank you for reading! Please let me know if you have any comments or questions.
 
 --
 
-Lisa M. Pritchett is the sole author and analyst of this report. It was completed on `r Sys.Date()` for Reproducible Research, John's Hopkin's University, Coursera.
+Lisa M. Pritchett is the sole author and analyst of this report. It was completed on 2017-11-23 for Reproducible Research, John's Hopkin's University, Coursera.
 
