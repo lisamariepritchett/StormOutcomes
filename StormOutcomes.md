@@ -4,10 +4,8 @@ November 23, 2017
 
 
 
-## The Human and Financial Costs of Severe Weather in the USA
 
-
-### Synopsis
+## Synopsis
 
 #### -_What types of severe weather cause the most damage to human life?_
 
@@ -15,7 +13,9 @@ November 23, 2017
 
 This document examines data from The National Oceanic and Atmospheric Administration (NOAA) to answer these questions. The NOAA maintains a database of severe weather events from across the USA dating back to 1950 including nearly a million entries and many different types of severe weather. 
 
-This document contains all code needed to download the data, clean it, process it, and produce the figures at the end. The real challenge in this project was transforming the Event Type data from a string variable with many different values into a factor variable with a limited number of levels. My goal was to represent all of the severe weather types within a readable and attractive figure without throwing out any relevant data. I accomplish this by creating groups of severe weather events, efficiently serach for keywords using regular expressions, and apply conditional logic to arrive at a cleaned factor variable for type of severe weather event.
+This document contains all code needed to download the data, clean it, process it, and produce the figures at the end. The real challenge in this project was transforming the Event Type data from a string variable with hundreds of different values into a factor variable with a limited number of levels. My goal was to represent all of the severe weather types within a readable and attractive figure without throwing out any relevant data. I accomplish this by creating groups of severe weather events, efficiently serach for keywords using regular expressions, and apply conditional logic to arrive at a cleaned factor variable. In the future, this labeled dataset could be used to train a classification algorithm to automatically clean and classify the event types.
+
+I find that Tornados cause by far the most damage to human life, with Heat and Thunderstorm events being the next most dangerous. Floods, Hurricanes, and Tornados cause the most financial damage. 
 
 ### Get & Explore Data
 
@@ -243,7 +243,7 @@ print(GroupKeywords)
 ## 11                                                             
 ## 12                                                             
 ##     Thunderstorm     Ocean_Tidal    Tornado  Tropical       Wind
-## 1           HAIL            TIDE       DUST  TROPICAL       WIND
+## 1           HAIL            TIDE DUST DEVIL  TROPICAL       WIND
 ## 2   THUNDERSTORM            SURF     FUNNEL   TSUNAMI DUST STORM
 ## 3           RAIN          MARINE WATERSPOUT HURRICANE MICROBURST
 ## 4      LIGHTNING         CURRENT    TORNADO   TYPHOON  DOWNBURST
@@ -289,7 +289,7 @@ My_StormData <- SearchEvents(GroupedLabels,GroupedRegEx)
 
 
 This code results in a classification for all but
-57
+58
 cases,
 34 of which are labeled "other". 
 
@@ -305,8 +305,8 @@ filter(My_StormData,Counted>1) %>% group_by(Category,EVTYPE) %>% summarise(n=n()
 ```
 
 ```
-## # A tibble: 147 x 3
-## # Groups:   Category [28]
+## # A tibble: 145 x 3
+## # Groups:   Category [27]
 ##                         Category                  EVTYPE     n
 ##                            <chr>                   <chr> <int>
 ##  1             Thunderstorm,Wind               TSTM WIND 63235
@@ -316,10 +316,10 @@ filter(My_StormData,Counted>1) %>% group_by(Category,EVTYPE) %>% summarise(n=n()
 ##  5             Thunderstorm,Wind          TSTM WIND/HAIL   441
 ##  6                     Cold,Wind EXTREME COLD/WIND CHILL   111
 ##  7 Thunderstorm,Ocean_Tidal,Wind        MARINE TSTM WIND   109
-##  8                  Tornado,Wind              DUST STORM   103
-##  9                     Cold,Wind         COLD/WIND CHILL    90
-## 10              Ocean_Tidal,Wind      MARINE STRONG WIND    46
-## # ... with 137 more rows
+##  8                     Cold,Wind         COLD/WIND CHILL    90
+##  9              Ocean_Tidal,Wind      MARINE STRONG WIND    46
+## 10             Thunderstorm,Wind THUNDERSTORM WINDS HAIL    40
+## # ... with 135 more rows
 ```
 We see that Thunderstorm Wind events account for many of the cases which have been placed into more than one category. I can very quickly correct these mistakes using conditional logic. This works so easily because I have boolean ("dummy coded") columns for each group.
 
@@ -407,6 +407,7 @@ For my plot I want to choose a few specific event types to include within the la
 
 
 ```r
+# create a function to easily add levels to a new factor v
 addsubcat <- function(InCategory,subcat_string,subcat_label) {
     My_StormData$strmatch <-  grepl(subcat_string,My_StormData$EVTYPE)
     My_StormData$Type <- ifelse(My_StormData$strmatch & 
@@ -458,7 +459,7 @@ My_StormData$Category <- factor(My_StormData$Category, c(
 
 # rename some levels
 levels(My_StormData$Category) <- c( 
-    'Tornado', 'Flood' , 'Ocean/Tidal','Thunderstorm', 'Winter Storm',
+    'Tornado', 'Flood' , 'Ocean/Tidal','Thunder- storm', 'Winter Storm',
     'Tropical Storm', 'Wind', 'Fire', 'Cold', 'Heat', 'Drought',
     'Debris Flow', 'Not Categorized')
 ```
@@ -534,8 +535,8 @@ My_StormData <- select(My_StormData, REFNUM,EVTYPE,Category,Type,Fatalities=FATA
 MySummary <- My_StormData %>% group_by(Category, Type) %>%
     summarise(
         Freq = n(),
-        Total.Fatalities.Thousands = sum(Fatalities) / 10 ^ 3,
-        Total.Injuries.Thousands = sum(Injuries) / 10 ^ 3,
+        Total.Fatalities = sum(Fatalities),
+        Total.Injuries = sum(Injuries),
         Total.Cost.Billions = sum(Cost) / 10 ^ 9
     )
 ```
@@ -584,62 +585,70 @@ Finally, I make and save the plots
 ```r
 MySummary %>%  ggplot(aes(
     x = Category,
-    y = Total.Injuries.Thousands,
+    y = Total.Injuries,
     fill = Type)) + 
     geom_bar(stat='identity',color='darkgray',alpha=.9)  +
-    theme(axis.text.x = element_text(angle = 90, hjust = 0.5, vjust=0.5),
+    scale_x_discrete(labels = function(Category) str_wrap(Category, width = 5)) +
+    theme(axis.text.x = element_text(angle = 0, hjust = 0.5, vjust=0.5, size=6.5),
+          axis.title.y  = element_text(angle=0, vjust = 0.5, size = 9),
+          legend.text = element_text(size=7),
           legend.title=element_blank(),
           legend.position = c(1,1),
           legend.justification=c(1,1),
           legend.direction="horizontal",
           legend.background = element_rect(fill=alpha('#ebebeb',0.7))) +
     scale_fill_manual(values=mypal) +
-    labs(x='',y='Total Injuries in Thousands', 
-         subtitle = 'Total injuries related to each type of severe weather in the NOAA database' )
+    labs(x='',y='Total\nInjuries', 
+         subtitle = 'Total Injuries related to each type of severe weather in the NOAA database')
 
+#ggsave('injuries.png', width=7, height=3.5, units=c('in'))
 
 
 MySummary %>%  ggplot(aes(
     x = Category,
-    y = Total.Fatalities.Thousands,
+    y = Total.Fatalities,
     fill = Type)) + 
     geom_bar(stat='identity',color='darkgray',alpha=.9)  +
+    scale_x_discrete(labels = function(Category) str_wrap(Category, width = 5)) +
     theme(legend.position="none",
-          axis.text.x = element_text(angle = 90, hjust = 0.5, vjust=0.5)) +
+          axis.title.y  = element_text(angle=0, hjust = 0.5, vjust = 0.5, size = 9),
+          axis.text.x = element_text(angle = 0, hjust = 0.5, vjust=0.5, size=6.5)) +
     scale_fill_manual(values=mypal) +
-    labs(x='',y='Total Fatalities in Thousands',
+    labs(x='',y='Total\nFatalities',
          subtitle = 'Total Fatalities related to each type of severe weather in the NOAA database')
-```
 
-![](StormOutcomes_files/figure-html/makePlots-1.png)![](StormOutcomes_files/figure-html/makePlots-2.png)
+#ggsave('fatalities.png', width=7, height=3.5, units=c('in'))
 
-
-
-We can see that Tornados cause by far the most injuries and deaths in the USA. Heat causes the second most deaths, and Thunderstorms cause the second most injuries. Every kind of severe weather category examined here is associated with some injuries or fatalities. 
-
-
-```r
 MySummary %>%  ggplot(aes(
     x = Category,
     y = Total.Cost.Billions,
     fill = Type)) + 
     geom_bar(stat='identity',color='lightgray',alpha=.9,size=.3)  +
+    scale_x_discrete(labels = function(Category) str_wrap(Category, width = 5)) +
     theme(legend.position="none",
-          axis.text.x = element_text(angle = 90, hjust = 0.5, vjust=0.5)) +
+          axis.title.y  = element_text(angle=0, hjust = 0, vjust = 0.5, size = 9),
+          axis.text.x = element_text(angle = 0, hjust = 0.5, vjust=0.5,size = 6.5))+
     scale_fill_manual(values=mypal) +
-    labs(x='',y='Total Cost in Billions',
+    labs(x='',y='Billions\n of USD',
          subtitle = 'Total Cost in Billions of Dollars related to each type of severe weather in the NOAA database')
+
+
+
+#ggsave('cost.png', width=7, height=3.5, units=c('in'))
 ```
 
-![](StormOutcomes_files/figure-html/LastPlot-1.png)<!-- -->
+![](StormOutcomes_files/figure-html/makePlots-1.png)![](StormOutcomes_files/figure-html/makePlots-2.png)![](StormOutcomes_files/figure-html/makePlots-3.png)
 
+We can see that Tornados cause by far the most injuries and deaths in the USA. Heat causes the second most deaths, and Thunderstorms cause the second most injuries. Every kind of severe weather category examined here is associated with some injuries or fatalities. 
 
 Floods cause the most Financial damage, followed by Tropical Storms (especially Hurricanes), Tornados, other Ocean/Tidal events, Thunderstorms, and Winter Storms. The weather types causing almost nothing financially are Cold, Heat, and Debris Flow.
 
 
-Thank you for reading! Please let me know if you have any comments or questions.
+Thank you for reading! Please let me know if you have any comments or questions. 
+Connect with me on [LinkedIn](https://www.linkedin.com/in/lisamariepritchett/)
 
 --
 
-Lisa M. Pritchett is the sole author and analyst of this report. It was completed on 2017-11-23 for Reproducible Research, John's Hopkin's University, Coursera.
+Lisa M. Pritchett is the sole author and analyst of this report. This report was completed on 2017-11-24 for Reproducible Research, Johns Hopkins University, Coursera.
+
 
